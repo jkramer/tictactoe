@@ -1,0 +1,66 @@
+
+All game states and possible moves are calculated at startup, so it might take
+a few seconds (~6s on a Intel(R) Atom(TM) CPU N450 @ 1.66GHz). The game can
+make use of parallelism to speed things up, but the Haskell runtime requires
+some compile or RT options to activate threading.
+
+At compile-time:
+
+	ghc -o tic TicTacToe.hs --make -O2 -threaded -rtsopts -with-rtsopts="-N"
+
+And/or at run-time:
+
+	./tic +RTS -N
+
+"-N" makes the Haskell runtime detect the number of available CPUs/cores. You
+can also define the number of cores to use manually, the number shouldn't
+exceed the actual number of cores though:
+
+	./tic +RTS -N2  # 2 cores
+	./tic +RTS -N16 # 16 cores
+
+
+I was focusing on the AI while coding this, so the UI is crappy.
+
+The AI isn't perfect yet but should make sane moves most of the time, with some
+exceptions. The problem is that it's taking all possible future game states
+into account and calculates the total number of scenarios in which it can win,
+sometimes ignoring possible immediate threats, as the example below will show:
+
+(I'm X and got the opening move.)
+
+	_ _ _
+	_ _ _
+	_ _ _
+	0 1 2 3 4 5 6 7 8> 4
+
+	O _ _
+	_ X _
+	_ _ _
+	1 2 3 5 6 7 8> 3
+
+	O _ O
+	X X _
+	_ _ _
+	1 5 6 7 8> 5
+
+	You win.
+
+Obviously the AIs choice of slot 2 (upper right) was pretty stupid; it should
+have chosen 5 to prevent me from winning next turn. From the AIs point of view
+it makes perfectly sense though, because statistically the future game states
+available after choosing (2,O) provide more chances to win the game than
+choosing (5,O) (lower score is better):
+
+	[
+		((2,O),1.391304347826087),
+		((5,O),2.6),
+		((1,O),2.6666666666666665),
+		((8,O),3.5625),
+		((6,O),5.875),
+		((7,O),5.875)
+	]
+
+Non-technically speaking, the AI will try to go for victory if possible and
+take risks, instead of making safer choices and go for a draw when victory is
+still possible.
